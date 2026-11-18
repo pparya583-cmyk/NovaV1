@@ -18,9 +18,18 @@ jobs:
       - name: Install Android SDK packages (runner SDK, no setup-android action)
         shell: bash
         run: |
-          SDKM="$(command -v sdkmanager || ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | head -1)"
+          set -euo pipefail
+          SDKM="$(command -v sdkmanager || true)"
+          if [ -z "$SDKM" ]; then
+            SDKM="$(ls "${ANDROID_HOME:-/nonexistent}"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1 || true)"
+          fi
+          if [ -z "$SDKM" ] || [ ! -x "$SDKM" ]; then
+            echo "::error::sdkmanager tidak ditemukan (ANDROID_HOME=${ANDROID_HOME:-kosong})"
+            exit 1
+          fi
           echo "sdkmanager: $SDKM  ANDROID_HOME: $ANDROID_HOME"
-          yes | "$SDKM" --licenses > /dev/null || true
+          # yes receives SIGPIPE once sdkmanager exits, so its status is expected to be non-zero.
+          (yes | "$SDKM" --licenses > /dev/null) || true
           "$SDKM" "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
         with:
