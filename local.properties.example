@@ -1,0 +1,4 @@
+# Copy these entries into local.properties and replace the placeholders.
+YOUTUBE_API_KEY=your_youtube_data_api_key
+SPOTIFY_CLIENT_ID=a473f84507bf4ed4949a0ef292c695be
+SPOTIFY_REDIRECT_URI=novamusic://spotify-callback
