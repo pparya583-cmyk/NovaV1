@@ -420,7 +420,7 @@ private val tabIcons = listOf(Icons.Rounded.Home, Icons.Rounded.Search, Icons.Ro
                 .weight(1f)
                 .clip(RoundedCornerShape(32.dp))
                 .clickable { vm.navigate("Now Playing") }
-                .padding(start = 2.dp, end = 4.dp, vertical = 1.dp),
+                .padding(start = 2.dp, top = 1.dp, end = 4.dp, bottom = 1.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(11.dp)
         ) {
