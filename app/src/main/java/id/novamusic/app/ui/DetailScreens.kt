@@ -66,37 +66,37 @@ private fun time(ms: Long): String {
             }
             Spacer(Modifier.height(22.dp))
             Text(song?.title ?: "No track selected", fontSize = 24.sp, fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center, color = Forest, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(song?.artist ?: "Choose a song from your library", color = Muted, textAlign = TextAlign.Center)
+                textAlign = TextAlign.Center, color = Forest(), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(song?.artist ?: "Choose a song from your library", color = Muted(), textAlign = TextAlign.Center)
             Spacer(Modifier.height(18.dp))
             Slider(value = if (seeking >= 0) seeking else if (duration > 0) (progress.toFloat() / duration).coerceIn(0f, 1f) else 0f,
                 onValueChange = { seeking = it }, onValueChangeFinished = {
                     if (seeking >= 0 && duration > 0) vm.seek((seeking * duration).toLong()); seeking = -1f
                 }, enabled = duration > 0)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(time(progress), color = Muted, fontSize = 12.sp)
-                Text(time(duration), color = Muted, fontSize = 12.sp)
+                Text(time(progress), color = Muted(), fontSize = 12.sp)
+                Text(time(duration), color = Muted(), fontSize = 12.sp)
             }
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = vm::toggleShuffle) { Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (shuffle) Olive else Muted) }
+                IconButton(onClick = vm::toggleShuffle) { Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (shuffle) Olive() else Muted()) }
                 IconButton(onClick = vm::previous) { Icon(Icons.Rounded.SkipPrevious, "Previous", Modifier.size(34.dp)) }
-                FilledIconButton(onClick = vm::toggle, modifier = Modifier.size(68.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = Forest)) {
+                FilledIconButton(onClick = vm::toggle, modifier = Modifier.size(68.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = Forest())) {
                     Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/Pause", Modifier.size(36.dp))
                 }
                 IconButton(onClick = vm::next) { Icon(Icons.Rounded.SkipNext, "Next", Modifier.size(34.dp)) }
                 IconButton(onClick = vm::cycleRepeat) { Icon(if (repeat == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                    "Repeat mode", tint = if (repeat != Player.REPEAT_MODE_OFF) Olive else Muted) }
+                    "Repeat mode", tint = if (repeat != Player.REPEAT_MODE_OFF) Olive() else Muted()) }
             }
             Spacer(Modifier.height(18.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 IconButton(onClick = { song?.let { vm.toggleFavorite(it.id) } }, enabled = song != null) {
-                    Icon(if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favorite", tint = Olive)
+                    Icon(if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favorite", tint = Olive())
                 }
                 IconButton(onClick = { vm.navigate("Queue") }) { Icon(Icons.Rounded.QueueMusic, "Queue") }
                 IconButton(onClick = { vm.refreshLyrics(); vm.navigate("Lyrics") }) { Icon(Icons.Rounded.MusicNote, "Lyrics") }
                 Box {
-                    IconButton(onClick = { timerMenu = true }) { Icon(Icons.Rounded.Timer, "Sleep timer", tint = if (sleep > 0) Olive else Forest) }
+                    IconButton(onClick = { timerMenu = true }) { Icon(Icons.Rounded.Timer, "Sleep timer", tint = if (sleep > 0) Olive() else Forest()) }
                     DropdownMenu(expanded = timerMenu, onDismissRequest = { timerMenu = false }) {
                         listOf(0, 5, 15, 30, 60).forEach { minutes ->
                             DropdownMenuItem(text = { Text(if (minutes == 0) "Timer off" else "$minutes minutes") }, onClick = {
@@ -106,19 +106,19 @@ private fun time(ms: Long): String {
                     }
                 }
             }
-            if (sleep > 0) Text("Sleep timer: $sleep min", color = Olive, fontSize = 12.sp)
+            if (sleep > 0) Text("Sleep timer: $sleep min", color = Olive(), fontSize = 12.sp)
             GlassCard(Modifier.fillMaxWidth()) {
-                Text("Playback", fontWeight = FontWeight.Bold, color = Forest)
-                Text("Speed: ${speed}x", color = Muted)
+                Text("Playback", fontWeight = FontWeight.Bold, color = Forest())
+                Text("Speed: ${speed}x", color = Muted())
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(.75f, 1f, 1.25f, 1.5f).forEach { s ->
                         FilterChip(selected = speed == s, onClick = { vm.setSpeed(s) }, label = { Text("${s}x", fontSize = 11.sp) })
                     }
                 }
-                Text("App volume", color = Muted)
+                Text("App volume", color = Muted())
                 Slider(value = volume, onValueChange = vm::setVolume)
-                song?.let { Text("Source: ${it.source}", color = Muted, fontSize = 12.sp) }
-                song?.license?.takeIf { it.isNotBlank() }?.let { Text("Rights: $it", color = Muted, fontSize = 11.sp) }
+                song?.let { Text("Source: ${it.source}", color = Muted(), fontSize = 12.sp) }
+                song?.license?.takeIf { it.isNotBlank() }?.let { Text("Rights: $it", color = Muted(), fontSize = 11.sp) }
             }
         }
     }
@@ -137,21 +137,21 @@ private fun time(ms: Long): String {
                 OutlinedButton(onClick = vm::cycleRepeat) { Icon(Icons.Rounded.Repeat, null); Text(" ${listOf("Off", "One", "All").getOrElse(repeat) { "Off" }}") }
                 TextButton(onClick = vm::clearQueue, enabled = ids.isNotEmpty()) { Text("Clear") }
             }
-            Text("Use arrows to reorder without losing the current track.", color = Muted, fontSize = 12.sp)
+            Text("Use arrows to reorder without losing the current track.", color = Muted(), fontSize = 12.sp)
         }
         items(ids.size, key = { "queue:$it:${ids[it]}" }) { i ->
             val song = all[ids[i]]
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (i == index) "♫" else "${i + 1}", color = Olive, modifier = Modifier.width(28.dp))
+                Text(if (i == index) "♫" else "${i + 1}", color = Olive(), modifier = Modifier.width(28.dp))
                 Column(Modifier.weight(1f)) {
                     Text(song?.title ?: ids[i], maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                    Text(song?.artist ?: "Unknown", color = Muted, fontSize = 12.sp)
+                    Text(song?.artist ?: "Unknown", color = Muted(), fontSize = 12.sp)
                 }
                 IconButton(onClick = { vm.moveQueue(i, i - 1) }, enabled = i > 0) { Icon(Icons.Rounded.ArrowUpward, "Move up") }
                 IconButton(onClick = { vm.moveQueue(i, i + 1) }, enabled = i < ids.lastIndex) { Icon(Icons.Rounded.ArrowDownward, "Move down") }
                 IconButton(onClick = { vm.removeQueue(i) }) { Icon(Icons.Rounded.Close, "Remove") }
             }
-            HorizontalDivider(color = Sage.copy(alpha = .25f))
+            HorizontalDivider(color = Sage().copy(alpha = .25f))
         }
         if (ids.isEmpty()) item { EmptyText("Your queue is empty. Play a song to begin.") }
     }
@@ -168,7 +168,7 @@ private fun time(ms: Long): String {
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         Header("Lyrics", song?.title ?: "No song") { vm.navigate("Now Playing") }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Lyrics provided by LRCLIB where available", color = Muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            Text("Lyrics provided by LRCLIB where available", color = Muted(), fontSize = 12.sp, modifier = Modifier.weight(1f))
             TextButton(onClick = vm::refreshLyrics, enabled = !loading) {
                 Icon(Icons.Rounded.Refresh, null, Modifier.size(16.dp))
                 Text(" Retry")
@@ -180,7 +180,7 @@ private fun time(ms: Long): String {
             items(synced.size) { i ->
                 Text(synced[i].text.ifBlank { "♪" },
                     modifier = Modifier.fillMaxWidth().clickable { vm.seekToLyrics(synced[i].timeMs) }.padding(vertical = 12.dp),
-                    color = if (i == active) Forest else Muted.copy(alpha = .65f),
+                    color = if (i == active) Forest() else Muted().copy(alpha = .65f),
                     fontSize = if (i == active) 23.sp else 19.sp,
                     fontWeight = if (i == active) FontWeight.Bold else FontWeight.Normal)
             }
@@ -197,8 +197,10 @@ private fun time(ms: Long): String {
     var name by remember { mutableStateOf("") }
     var deleting by remember { mutableStateOf(false) }
     val chosen = playlists.firstOrNull { it.id == selected }
-    val playlistSongs by if (selected != null) vm.playlistSongs(selected!!).collectAsState(initial = emptyList())
-        else remember { kotlinx.coroutines.flow.flowOf(emptyList<SongEntity>()) }.collectAsState(initial = emptyList())
+    val songsFlow = remember(selected) {
+        selected?.let { vm.playlistSongs(it) } ?: kotlinx.coroutines.flow.flowOf(emptyList<SongEntity>())
+    }
+    val playlistSongs by songsFlow.collectAsState(initial = emptyList())
     if (editing) AlertDialog(onDismissRequest = { editing = false }, title = { Text(if (chosen == null) "Create playlist" else "Rename playlist") },
         text = { OutlinedTextField(name, onValueChange = { name = it }, label = { Text("Playlist name") }) },
         confirmButton = { TextButton(onClick = {
@@ -213,7 +215,11 @@ private fun time(ms: Long): String {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp)) {
         item {
             Header(chosen?.name ?: "Playlists", "Organize your sound") {
-                if (selected != null) vm.selectedPlaylist.value = null else vm.navigate("Library")
+                if (selected != null) {
+                    vm.selectedPlaylist.value = null
+                } else {
+                    vm.navigate("Device")
+                }
             }
             if (chosen == null) Button(onClick = { name = ""; editing = true }) { Icon(Icons.Rounded.Add, null); Text(" Create playlist") }
             else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -245,8 +251,8 @@ private fun time(ms: Long): String {
             val (state, pct) = status[d.id] ?: (0 to 0)
             GlassCard(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
                 Text(d.title, fontWeight = FontWeight.Bold)
-                Text(d.source, color = Muted, fontSize = 12.sp)
-                Text(d.license, color = Muted, fontSize = 11.sp, maxLines = 2)
+                Text(d.source, color = Muted(), fontSize = 12.sp)
+                Text(d.license, color = Muted(), fontSize = 11.sp, maxLines = 2)
                 val label = when (state) {
                     DownloadManager.STATUS_SUCCESSFUL -> "Completed"
                     DownloadManager.STATUS_RUNNING -> "Downloading $pct%"
@@ -255,7 +261,7 @@ private fun time(ms: Long): String {
                     DownloadManager.STATUS_FAILED -> "Failed"
                     else -> "Checking status"
                 }
-                Text(label, color = Olive)
+                Text(label, color = Olive())
                 if (state == DownloadManager.STATUS_RUNNING) LinearProgressIndicator(progress = { pct / 100f }, modifier = Modifier.fillMaxWidth())
                 TextButton(onClick = { vm.cancelDownload(d.id) }) { Text(if (state == DownloadManager.STATUS_SUCCESSFUL) "Remove download file" else "Cancel download") }
             }
@@ -266,6 +272,8 @@ private fun time(ms: Long): String {
 
 @Composable fun SettingsScreen(vm: NovaViewModel) {
     val reduceMotion by vm.reduceMotion.collectAsStateWithLifecycle()
+    val themeName by vm.theme.collectAsStateWithLifecycle()
+    val uiStyle by vm.uiStyle.collectAsStateWithLifecycle()
     val speed by vm.speed.collectAsStateWithLifecycle()
     val volume by vm.volume.collectAsStateWithLifecycle()
     val sleep by vm.sleepMinutes.collectAsStateWithLifecycle()
@@ -274,8 +282,30 @@ private fun time(ms: Long): String {
             Header("Settings", "Make NovaMusic yours")
             SectionTitle("Appearance")
             GlassCard(Modifier.fillMaxWidth()) {
-                Text("Theme: Daylight Glass", fontWeight = FontWeight.SemiBold)
-                Text("Ivory · sage · forest green", color = Muted, fontSize = 12.sp)
+                Text("Color theme", fontWeight = FontWeight.SemiBold)
+                Text("Choose the color mood for the whole app", color = Muted(), fontSize = 12.sp)
+                val themes = listOf("Daylight Glass", "Midnight AMOLED", "Ocean Breeze", "Rose Quartz", "Lavender Haze", "Sunset")
+                themes.chunked(2).forEach { pair ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        pair.forEach { option ->
+                            FilterChip(selected = themeName == option, onClick = { vm.setTheme(option) },
+                                label = { Text(option, maxLines = 1) }, modifier = Modifier.weight(1f))
+                        }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Text("Interface style", fontWeight = FontWeight.SemiBold)
+                Text("Choose Liquid Glass, classic glass, minimal or compact", color = Muted(), fontSize = 12.sp)
+                listOf("Liquid Glass", "Glass", "Minimal", "Compact").chunked(2).forEach { pair ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        pair.forEach { option ->
+                            FilterChip(selected = uiStyle == option, onClick = { vm.setUiStyle(option) },
+                                label = { Text(option, maxLines = 1) }, modifier = Modifier.weight(1f))
+                        }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Reduce animations", Modifier.weight(1f))
                     Switch(checked = reduceMotion, onCheckedChange = vm::setReduceMotion)
@@ -304,7 +334,7 @@ private fun time(ms: Long): String {
             SectionTitle("Library")
             GlassCard(Modifier.fillMaxWidth()) {
                 Button(onClick = vm::refreshLibrary) { Icon(Icons.Rounded.Refresh, null); Text(" Rescan local music") }
-                Text("If permission was denied, enable audio access in Android app settings.", color = Muted, fontSize = 12.sp)
+                Text("If permission was denied, enable audio access in Android app settings.", color = Muted(), fontSize = 12.sp)
             }
             SectionTitle("Downloads & storage")
             GlassCard(Modifier.fillMaxWidth()) {
@@ -314,10 +344,10 @@ private fun time(ms: Long): String {
             }
             SectionTitle("About")
             GlassCard(Modifier.fillMaxWidth()) {
-                Text("NovaMusic 1.0.5", fontWeight = FontWeight.Bold)
-                Text("Your sound, your space.", color = Muted)
-                Text("Local audio · Internet Archive · LRCLIB", color = Muted, fontSize = 12.sp)
-                Text("Streaming and downloads require independently verified rights.", color = Muted, fontSize = 12.sp)
+                Text("NovaMusic 1.1.0", fontWeight = FontWeight.Bold)
+                Text("Your sound, your space.", color = Muted())
+                Text("7 online music catalogues · Local audio · LRCLIB", color = Muted(), fontSize = 12.sp)
+                Text("Streaming and downloads require independently verified rights.", color = Muted(), fontSize = 12.sp)
             }
         }
     }
