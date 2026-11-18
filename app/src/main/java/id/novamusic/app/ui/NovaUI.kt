@@ -91,7 +91,12 @@ private val tabIcons = listOf(Icons.Rounded.Home, Icons.Rounded.Search, Icons.Ro
                 Column {
                     AnimatedVisibility(currentId != null && screen != "Now Playing" && screen != "Queue" && screen != "Lyrics",
                         enter = fadeIn() + slideInVertically { it }, exit = fadeOut()) {
-                        MiniPlayer(vm, current, playing)
+                        MiniPlayer(
+                            vm = vm,
+                            song = current,
+                            isFavorite = favorites.any { it.songId == currentId },
+                            playlists = playlists
+                        )
                     }
                     if (screen in tabs) NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f), tonalElevation = 4.dp) {
                         tabs.forEachIndexed { i, tab ->
@@ -176,14 +181,18 @@ private val tabIcons = listOf(Icons.Rounded.Home, Icons.Rounded.Search, Icons.Ro
 @Composable fun SongRow(song: SongEntity, vm: NovaViewModel, contextList: List<SongEntity>,
                                  favorite: Boolean, playlists: List<PlaylistEntity> = emptyList(), playlistId: Long? = null) {
     var expanded by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().clickable { vm.playSong(song, contextList) }.padding(vertical = 8.dp),
+    val context = LocalContext.current
+    Row(Modifier.fillMaxWidth().clickable {
+        if (song.playable) vm.playSong(song, contextList)
+        else runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(song.uri))) }
+    }.padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         AlbumArt(song, Modifier.size(50.dp))
         Column(Modifier.weight(1f)) {
             Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
             Text("${song.artist} · ${if (song.source == "local") "Local device" else song.source}",
                 fontSize = 12.sp, color = Muted(), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (!song.playable) Text("Lisensi tidak terverifikasi", color = Olive(), fontSize = 11.sp)
+            if (!song.playable) Text("Metadata only · tap to open source", color = Olive(), fontSize = 11.sp)
         }
         IconButton(onClick = { vm.toggleFavorite(song) }) {
             Icon(if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
@@ -195,8 +204,12 @@ private val tabIcons = listOf(Icons.Rounded.Home, Icons.Rounded.Search, Icons.Ro
                 @Composable fun entry(label: String, onClick: () -> Unit) {
                     DropdownMenuItem(text = { Text(label) }, onClick = { expanded = false; onClick() })
                 }
-                entry("Play next") { vm.addToQueue(song, true) }
-                entry("Add to queue") { vm.addToQueue(song) }
+                if (song.playable) {
+                    entry("Play next") { vm.addToQueue(song, true) }
+                    entry("Add to queue") { vm.addToQueue(song) }
+                } else {
+                    entry("Open source") { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(song.uri))) } }
+                }
                 playlists.forEach { list -> entry("Add to ${list.name}") { vm.addToPlaylist(list.id, song) } }
                 if (playlistId != null) entry("Remove from playlist") { vm.removeFromPlaylist(playlistId, song.id) }
                 if (song.downloadable) entry("Download licensed audio") { vm.download(song) }
@@ -260,19 +273,36 @@ private val tabIcons = listOf(Icons.Rounded.Home, Icons.Rounded.Search, Icons.Ro
 
 @Composable private fun SearchScreen(vm: NovaViewModel, favorites: Set<String>, playlists: List<PlaylistEntity>) {
     var query by remember { mutableStateOf("") }
+    var spotifyPlaylistUrl by remember { mutableStateOf("") }
+    val spotifyConnected by vm.spotifyConnected.collectAsStateWithLifecycle()
     val online by vm.online.collectAsStateWithLifecycle()
     val searching by vm.searching.collectAsStateWithLifecycle()
     val searches by vm.searches.collectAsStateWithLifecycle()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp)) {
         item {
-            Header("Online Music", "7 full-track providers · local music stays separate")
-            OutlinedTextField(query, onValueChange = { query = it }, label = { Text("Search online songs, artists or albums") },
+            Header("Online Music", "YouTube catalog + Spotify playlist import · local music stays separate")
+            OutlinedTextField(query, onValueChange = { query = it }, label = { Text("Search YouTube catalog") },
                 modifier = Modifier.fillMaxWidth(), singleLine = true,
                 leadingIcon = { Icon(Icons.Rounded.Search, null) },
                 trailingIcon = { if (query.isNotBlank()) IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Close, "Clear") } })
             Spacer(Modifier.height(8.dp))
             Button(onClick = { vm.searchOnline(query) }, enabled = query.isNotBlank() && !searching,
-                modifier = Modifier.fillMaxWidth()) { Text(if (searching) "Searching…" else "Search open music") }
+                modifier = Modifier.fillMaxWidth()) { Text(if (searching) "Searching…" else "Search YouTube") }
+            Spacer(Modifier.height(18.dp))
+            SectionTitle("Spotify playlist import")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = { if (spotifyConnected) vm.disconnectSpotify() else vm.connectSpotify() },
+                    enabled = !searching, modifier = Modifier.weight(1f)) {
+                    Text(if (spotifyConnected) "Disconnect Spotify" else "Connect Spotify")
+                }
+            }
+            OutlinedTextField(spotifyPlaylistUrl, onValueChange = { spotifyPlaylistUrl = it },
+                label = { Text("Spotify playlist link") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedButton(onClick = { vm.importSpotifyPlaylist(spotifyPlaylistUrl) },
+                enabled = spotifyConnected && spotifyPlaylistUrl.isNotBlank() && !searching,
+                modifier = Modifier.fillMaxWidth()) { Text("Import Spotify playlist") }
+            Text("Spotify imports track metadata only. Imported tracks are not playable from Spotify inside NovaMusic.",
+                fontSize = 12.sp, color = Muted())
             Text("Explore Indonesian sounds", color = Forest(), fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -286,15 +316,15 @@ private val tabIcons = listOf(Icons.Rounded.Home, Icons.Rounded.Search, Icons.Ro
                     TextButton(onClick = { query = h.query; vm.searchOnline(h.query) }) { Text(h.query) }
                 }
             }
-            SectionTitle("7 online providers · ${online.size} tracks")
+            SectionTitle("Catalog results · ${online.size} tracks")
         }
         item {
             if (searching) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text("Sources: Audius, Internet Archive, Openverse, Jamendo via Openverse, Wikimedia Commons, ccMixter and Scott Buckley. Preview-only items are filtered out; availability of Indonesian and viral hits depends on each catalogue.",
+            Text("YouTube results are catalog metadata only and open in YouTube for playback. Spotify playlist import requires user OAuth; Spotify metadata is not an audio stream.",
                 fontSize = 12.sp, color = Muted())
         }
         items(online, key = { "online:${it.id}" }) { SongRow(it, vm, online, it.id in favorites, playlists) }
-        if (online.isEmpty() && !searching) item { EmptyText("Search the open catalogue. Local files are kept separately under Device.") }
+        if (online.isEmpty() && !searching) item { EmptyText("Search the YouTube catalog. Local files stay under Device.") }
     }
 }
 
@@ -356,41 +386,177 @@ private val tabIcons = listOf(Icons.Rounded.Home, Icons.Rounded.Search, Icons.Ro
     }
 }
 
-@Composable private fun MiniPlayer(vm: NovaViewModel, song: SongEntity?, playing: Boolean) {
-    val progress by vm.progress.collectAsStateWithLifecycle()
-    val duration by vm.duration.collectAsStateWithLifecycle()
-    GlassCard(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp).clickable { vm.navigate("Now Playing") }) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AlbumArt(song, Modifier.size(42.dp))
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(song?.title ?: "Now playing", fontWeight = FontWeight.SemiBold, maxLines = 1)
-                Text(song?.artist ?: "Loading metadata", color = Muted(), fontSize = 11.sp, maxLines = 1)
+@Composable private fun MiniPlayer(
+    vm: NovaViewModel,
+    song: SongEntity?,
+    isFavorite: Boolean,
+    playlists: List<PlaylistEntity>
+) {
+    var showPlaylistMenu by remember { mutableStateOf(false) }
+    if (song == null) return
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 7.dp)
+            .clip(RoundedCornerShape(42.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        Color(0xFF321923).copy(alpha = .96f),
+                        Color(0xFF713448).copy(alpha = .94f),
+                        Color(0xFF4B2638).copy(alpha = .96f)
+                    )
+                )
+            )
+            .border(1.dp, Color.White.copy(alpha = .22f), RoundedCornerShape(42.dp))
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Artwork/title area opens the full player, like the compact dock in the reference.
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(32.dp))
+                .clickable { vm.navigate("Now Playing") }
+                .padding(start = 2.dp, end = 4.dp, vertical = 1.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp)
+        ) {
+            Box {
+                AlbumArt(song, Modifier.size(54.dp).clip(CircleShape))
+                Box(
+                    Modifier.size(54.dp).border(
+                        2.dp, Color.White.copy(alpha = .72f), CircleShape
+                    )
+                )
             }
-            IconButton(onClick = vm::toggle) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/Pause") }
-            IconButton(onClick = vm::next) { Icon(Icons.Rounded.SkipNext, "Next") }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    song.title,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    song.artist,
+                    color = Color.White.copy(alpha = .72f),
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
-        LinearProgressIndicator(progress = { if (duration > 0) (progress.toFloat() / duration).coerceIn(0f, 1f) else 0f },
-            modifier = Modifier.fillMaxWidth().height(3.dp), color = Olive(), trackColor = Sage().copy(alpha = .2f))
+
+        @Composable
+        fun DockAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+            Box(
+                Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = .10f))
+                    .border(1.dp, Color.White.copy(alpha = .07f), CircleShape)
+                    .clickable(onClick = onClick),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, label, tint = Color.White.copy(alpha = .88f), modifier = Modifier.size(25.dp))
+            }
+        }
+
+        DockAction(Icons.Rounded.PersonOutline, "Open player") { vm.navigate("Now Playing") }
+        Box {
+            DockAction(Icons.Rounded.Add, "Add to playlist") { showPlaylistMenu = true }
+            DropdownMenu(expanded = showPlaylistMenu, onDismissRequest = { showPlaylistMenu = false }) {
+                if (playlists.isEmpty()) {
+                    DropdownMenuItem(
+                        text = { Text("No playlists yet") },
+                        onClick = { showPlaylistMenu = false }
+                    )
+                } else {
+                    playlists.forEach { playlist ->
+                        DropdownMenuItem(
+                            text = { Text("Add to ${playlist.name}") },
+                            onClick = {
+                                showPlaylistMenu = false
+                                vm.addToPlaylist(playlist.id, song)
+                            }
+                        )
+                    }
+                }
+                DropdownMenuItem(
+                    text = { Text("Manage playlists") },
+                    onClick = { showPlaylistMenu = false; vm.navigate("Playlist") }
+                )
+            }
+        }
+        DockAction(
+            if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+            if (isFavorite) "Remove favorite" else "Add favorite"
+        ) { vm.toggleFavorite(song) }
     }
 }
 
 @Composable private fun FloatingBubble(vm: NovaViewModel) {
-    var x by rememberSaveable { mutableFloatStateOf(0f) }
-    var y by rememberSaveable { mutableFloatStateOf(0f) }
-    val pulse = rememberInfiniteTransition(label = "liquid-bubble")
-    val glow by pulse.animateFloat(initialValue = .18f, targetValue = .38f,
-        animationSpec = infiniteRepeatable(tween(1800), RepeatMode.Reverse), label = "bubble-glow")
+    // rememberSaveable only knows how to save plain MutableState; MutableFloatState throws when the
+    // activity saves its state (rotation, background kill) while the bubble is on screen.
+    var x by rememberSaveable { mutableStateOf(0f) }
+    var y by rememberSaveable { mutableStateOf(0f) }
+    val pulse = rememberInfiniteTransition(label = "liquid-glass-bubble")
+    val glow by pulse.animateFloat(
+        initialValue = .16f,
+        targetValue = .34f,
+        animationSpec = infiniteRepeatable(tween(1900), RepeatMode.Reverse),
+        label = "bubble-glow"
+    )
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
-        Box(Modifier.padding(end = 18.dp, bottom = 22.dp)
-            .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
-            .size(62.dp)
-            .pointerInput(Unit) { detectDragGestures { change, drag -> change.consume(); x += drag.x; y += drag.y } }
-            .clickable { vm.navigate("Now Playing") }
-            .background(Brush.linearGradient(listOf(Color.White.copy(alpha = .72f), Sage().copy(alpha = .38f + glow), Forest().copy(alpha = .20f))), CircleShape)
-            .border(1.4.dp, Brush.linearGradient(listOf(Color.White.copy(alpha = .9f), Sage().copy(alpha = .48f))), CircleShape),
-            contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.GraphicEq, "Drag or open player", tint = Forest(), modifier = Modifier.size(27.dp))
+        Box(
+            Modifier
+                .padding(end = 18.dp, bottom = 18.dp)
+                .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
+                .size(66.dp)
+                .pointerInput(Unit) {
+                    detectDragGestures { change, drag ->
+                        change.consume()
+                        x += drag.x
+                        y += drag.y
+                    }
+                }
+                .clickable { vm.navigate("Now Playing") }
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            Color.White.copy(alpha = .82f),
+                            Color(0xFFB9D8D0).copy(alpha = .48f + glow),
+                            Color(0xFF6C9E91).copy(alpha = .34f)
+                        )
+                    ),
+                    CircleShape
+                )
+                .border(
+                    1.5.dp,
+                    Brush.linearGradient(
+                        listOf(Color.White.copy(alpha = .95f), Color.White.copy(alpha = .22f))
+                    ),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                Modifier
+                    .size(52.dp)
+                    .background(Color.White.copy(alpha = .16f), CircleShape)
+                    .border(1.dp, Color.White.copy(alpha = .34f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.GraphicEq,
+                    "Drag bubble or open player",
+                    tint = Color(0xFF244B43),
+                    modifier = Modifier.size(29.dp)
+                )
+            }
         }
     }
 }

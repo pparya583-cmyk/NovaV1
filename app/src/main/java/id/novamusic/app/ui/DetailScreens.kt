@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
+import id.novamusic.app.BuildConfig
 import id.novamusic.app.NovaViewModel
 import id.novamusic.app.data.PlaylistEntity
 import id.novamusic.app.data.SongEntity
@@ -244,7 +245,7 @@ private fun time(ms: Long): String {
     LaunchedEffect(downloads) { while (isActive) { vm.refreshDownloads(); delay(2000) } }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp)) {
         item {
-            Header("Downloads", "Only explicitly licensed Internet Archive files") { vm.navigate("Settings") }
+            Header("Downloads", "Files previously downloaded in NovaMusic") { vm.navigate("Settings") }
             OutlinedButton(onClick = vm::refreshDownloads) { Icon(Icons.Rounded.Refresh, null); Text(" Refresh status") }
         }
         items(downloads, key = { it.id }) { d ->
@@ -266,7 +267,7 @@ private fun time(ms: Long): String {
                 TextButton(onClick = { vm.cancelDownload(d.id) }) { Text(if (state == DownloadManager.STATUS_SUCCESSFUL) "Remove download file" else "Cancel download") }
             }
         }
-        if (downloads.isEmpty()) item { EmptyText("Licensed downloads will appear here.") }
+        if (downloads.isEmpty()) item { EmptyText("No downloads yet.") }
     }
 }
 
@@ -344,9 +345,9 @@ private fun time(ms: Long): String {
             }
             SectionTitle("About")
             GlassCard(Modifier.fillMaxWidth()) {
-                Text("NovaMusic 1.1.0", fontWeight = FontWeight.Bold)
+                Text("NovaMusic ${BuildConfig.VERSION_NAME}", fontWeight = FontWeight.Bold)
                 Text("Your sound, your space.", color = Muted())
-                Text("7 online music catalogues · Local audio · LRCLIB", color = Muted(), fontSize = 12.sp)
+                Text("YouTube catalog metadata · Spotify playlist metadata · Local audio · LRCLIB", color = Muted(), fontSize = 12.sp)
                 Text("Streaming and downloads require independently verified rights.", color = Muted(), fontSize = 12.sp)
             }
         }
