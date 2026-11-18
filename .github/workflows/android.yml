@@ -15,8 +15,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Install Android SDK packages (runner SDK, no setup-android action)
+        shell: bash
+        run: |
+          SDKM="$(command -v sdkmanager || ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | head -1)"
+          echo "sdkmanager: $SDKM  ANDROID_HOME: $ANDROID_HOME"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
@@ -41,8 +46,12 @@ jobs:
         if: always()
         shell: bash
         run: |
-          ls -l app/build/outputs/apk/debug/*.apk | tee apk-info.txt
-          sha256sum app/build/outputs/apk/debug/*.apk | tee -a apk-info.txt
+          if ls app/build/outputs/apk/debug/*.apk > /dev/null 2>&1; then
+            ls -l app/build/outputs/apk/debug/*.apk | tee apk-info.txt
+            sha256sum app/build/outputs/apk/debug/*.apk | tee -a apk-info.txt
+          else
+            echo "APK tidak dihasilkan - lihat build.log" | tee apk-info.txt
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
