@@ -1,0 +1,58 @@
+name: Android debug build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Build debug APK
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon --console=plain --stacktrace :app:assembleDebug 2>&1 | tee build.log
+      - name: Unit tests
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon --console=plain :app:testDebugUnitTest 2>&1 | tee test.log
+      - name: Lint (report only)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon --console=plain :app:lintDebug 2>&1 | tee lint.log
+      - name: Record APK info
+        if: always()
+        shell: bash
+        run: |
+          ls -l app/build/outputs/apk/debug/*.apk | tee apk-info.txt
+          sha256sum app/build/outputs/apk/debug/*.apk | tee -a apk-info.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: NovaMusic-build-reports
+          path: |
+            build.log
+            test.log
+            lint.log
+            apk-info.txt
+            app/build/outputs/apk/debug/*.apk
+            app/build/reports/lint-results-debug.html
+            app/build/test-results/testDebugUnitTest/**
+          if-no-files-found: warn
