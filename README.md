@@ -1,6 +1,6 @@
 # NovaMusic · Daylight Glass
 
-**Android source project · v1.0.5 (integrated playback preference persistence).** Kotlin + Jetpack Compose + Material 3 + Media3 ExoPlayer/MediaSessionService + Room + DataStore + OkHttp. Application ID: `id.novamusic.app`. Minimum API 26, compileSdk 36, targetSdk 36.
+**Android source project · v1.0.9 (six color themes; three interface styles; seven online music catalogues; local library kept separate).** Kotlin + Jetpack Compose + Material 3 + Media3 ExoPlayer/MediaSessionService + Room + DataStore + OkHttp. Application ID: `id.novamusic.app`. Minimum API 26, compileSdk 36, targetSdk 36.
 
 ## Build and verify
 
@@ -15,10 +15,41 @@
 
 - `ui/`: Daylight Glass Compose screens and reusable components.
 - `data/`: Room entities/DAO, MediaStore library, DataStore preferences.
-- `network/`: Internet Archive search/metadata, LRCLIB lyrics, conservative rights screening.
+- `network/`: seven online music catalogues (Audius, Internet Archive, Openverse, Jamendo via Openverse, Wikimedia Commons, ccMixter, Scott Buckley), LRCLIB lyrics, and per-source full-track/licence screening.
 - `player/`: one Media3 ExoPlayer owned by `MediaSessionService`.
 - `NovaViewModel`: UI state, asynchronous operations, player controller, queue coordination.
 - `.github/workflows/`: Android build, unit-test, and lint pipeline.
+
+## Refinement changes in v1.0.8
+
+- Expanded Online search to seven catalogue sources: Audius, Internet Archive, Openverse, Jamendo indexed through Openverse, Wikimedia Commons, ccMixter, and Scott Buckley.
+- All seven sources use public read/search access and do not require a developer Client ID or API key. Jamendo is accessed as an indexed Openverse source, not through Jamendo's credentialed first-party API.
+- Openverse results require a direct audio-file URL, at least 90 seconds of indexed duration, and an accepted CC0/CC BY/CC BY-SA licence. The Jamendo-indexed subset uses the same checks.
+- Wikimedia Commons results require a direct audio file, a file size of at least 1 MB, and a recognized permissive licence URL.
+- ccMixter uses its public Query API RSS enclosure, requests Attribution-licensed uploads, and rejects items without a full-length duration or a sufficiently large original enclosure.
+- Scott Buckley results are resolved to the explicitly labelled **MP3 (Full Mix)** download on the artist's own track page and retain CC BY 4.0 attribution details.
+- Audius requires `is_streamable` and a duration of at least 90 seconds; Internet Archive requires an audio file of at least 1 MB and continues to apply its conservative rights filter. Preview-only links and embedded video/radio players are not used as audio sources.
+- The Online screen identifies all seven catalogue sources. Device audio remains separate and is never merged into online results.
+- Catalogues are independent/production-music and openly licensed collections. They do not guarantee current Indonesian chart hits or viral commercial releases; those require a separately licensed mainstream music provider.
+
+## Refinement changes in v1.0.7
+
+- Added Audius as an additional online music provider. Public read/search requests use the official Audius API without a developer API key; the app name is sent as a required identification parameter.
+- Audius results are included alongside Internet Archive results in Online search. Tracks are shown only when Audius marks them `is_streamable`; playback uses the official Audius track stream endpoint through Media3, so Android background playback continues to use the existing MediaSession service.
+- Audius tracks are not offered as downloads. Their track page and artist terms remain authoritative; streamability is not a blanket redistribution licence.
+- YouTube is not integrated as a provider or player. No radio-only source was added. Device music remains separate from Online discovery.
+- Audius is an independent-artist catalogue and may contain Indonesian creators, but it does not guarantee chart hits or viral commercial Indonesian releases.
+
+## Refinement changes in v1.0.6
+
+- Renamed the navigation destinations to **Online** and **Device** so streaming discovery and files stored on the phone have distinct entry points.
+- The Online screen searches online catalogue providers; local MediaStore results are no longer mixed into online search results.
+- Home listening history, recommendations, and recently added tracks now exclude on-device files. The Device screen remains the dedicated place for local tracks, albums, artists, folders, and genres.
+- Added quick discovery searches for Indonesian music, Indonesian pop, dangdut, and Indonesian folk. These are search shortcuts, not claims that the catalogue contains current viral hits.
+- Kept the conservative licence gate. Only recognizable CC0, CC BY, CC BY-SA, and public-domain declarations are eligible for streaming; a licence declaration is still not a guarantee of rights.
+- No client ID, API key, YouTube/Spotify scraping, or paid-service bypass was added.
+
+**Catalogue limitation:** Internet Archive is a legal open-licence/public-domain discovery source, not a mainstream chart service. It cannot guarantee full versions of currently viral Indonesian commercial songs. A dependable mainstream catalogue with those tracks generally requires a licensed provider and its approved integration. Do not label search shortcuts as "trending" without a real chart feed.
 
 ## Refinement changes in v1.0.5
 
@@ -148,3 +179,11 @@
 ## Rights and privacy
 
 Do not assume all Internet Archive files are free to use. Metadata may be incomplete or incorrect. Verify the item's license and terms manually before redistribution. No Spotify/YouTube scraping, paid-service bypass, or embedded secret API keys are used.
+
+
+## Appearance customization in v1.0.9
+
+- Six persistent color themes: Daylight Glass, Midnight AMOLED, Ocean Breeze, Rose Quartz, Lavender Haze, and Sunset.
+- Three interface styles: Glass, Minimal, and Compact. These adjust card shape, spacing, border treatment, and elevation.
+- Theme and interface selections are saved with Android DataStore and restored on the next launch.
+- Existing reduce-animation setting remains available.
