@@ -68,7 +68,7 @@ class ArchiveRepository {
             val directory = f.optString("source").equals("metadata", ignoreCase = true)
             val size = f.optString("size").toLongOrNull() ?: 0L
             val encrypted = f.optString("encryption").isNotBlank()
-            formatOk && !privateFile && !directory && !encrypted && size > 0L
+            formatOk && !privateFile && !directory && !encrypted && size >= 1_000_000L
         } ?: return null
         val name = file.optString("name")
         val audioUrl = "https://archive.org/download/${Uri.encode(identifier)}/${name.split('/').joinToString("/") { Uri.encode(it) }}"
