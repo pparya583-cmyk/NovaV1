@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -6,6 +7,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
+
+val localProps = Properties().apply {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) localFile.inputStream().use { load(it) }
+}
+fun quotedBuildConfig(value: String) = "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
 
 android {
     namespace = "id.novamusic.app"
@@ -15,8 +23,11 @@ android {
         applicationId = "id.novamusic.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20
-        versionName = "1.1.0"
+        versionCode = 24
+        versionName = "1.4.0"  
+        buildConfigField("String", "YOUTUBE_API_KEY", quotedBuildConfig(localProps.getProperty("YOUTUBE_API_KEY", "")))
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", quotedBuildConfig(localProps.getProperty("SPOTIFY_CLIENT_ID", "a473f84507bf4ed4949a0ef292c695be")))
+        buildConfigField("String", "SPOTIFY_REDIRECT_URI", quotedBuildConfig(localProps.getProperty("SPOTIFY_REDIRECT_URI", "novamusic://spotify-callback")))
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
