@@ -57,6 +57,8 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
     val downloads = dao.downloads().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val sort = prefs.sort.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Title")
     val reduceMotion = prefs.reduceMotion.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val theme = prefs.theme.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Daylight Glass")
+    val uiStyle = prefs.uiStyle.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Glass")
 
     val screen = MutableStateFlow("Home")
     val selectedPlaylist = MutableStateFlow<Long?>(null)
@@ -160,7 +162,10 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
             delay(300) // Debounce rapid typing to avoid unnecessary network requests.
             try {
                 dao.addSearch(SearchHistoryEntity(query.trim()))
-                online.value = app.archive.search(query.trim())
+                val archiveResults = runCatching { app.archive.search(query.trim()) }.getOrDefault(emptyList())
+                val audiusResults = runCatching { app.audius.search(query.trim()) }.getOrDefault(emptyList())
+                val additionalResults = app.additionalMusic.searchAll(query.trim())
+                online.value = (audiusResults + archiveResults + additionalResults).distinctBy { it.id }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
@@ -328,6 +333,8 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
     fun playlistSongs(id: Long): Flow<List<SongEntity>> = dao.playlistSongs(id)
     fun setSort(value: String) = viewModelScope.launch { prefs.setSort(value) }
     fun setReduceMotion(value: Boolean) = viewModelScope.launch { prefs.setReduceMotion(value) }
+    fun setTheme(value: String) = viewModelScope.launch { prefs.setTheme(value) }
+    fun setUiStyle(value: String) = viewModelScope.launch { prefs.setUiStyle(value) }
 
     private fun loadLyrics(id: String) {
         lyricsJob?.cancel()

@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.room.Room
 import id.novamusic.app.data.*
 import id.novamusic.app.network.ArchiveRepository
+import id.novamusic.app.network.AudiusRepository
+import id.novamusic.app.network.AdditionalMusicRepository
 import id.novamusic.app.network.LyricsRepository
 
 class NovaApp : Application() {
@@ -12,5 +14,7 @@ class NovaApp : Application() {
     val prefs by lazy { NovaPreferences(this) }
     val local by lazy { LocalMusicRepository(this, dao) }
     val archive by lazy { ArchiveRepository() }
+    val audius by lazy { AudiusRepository() }
+    val additionalMusic by lazy { AdditionalMusicRepository() }
     val lyrics by lazy { LyricsRepository() }
 }
