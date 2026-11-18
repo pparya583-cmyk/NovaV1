@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.DownloadManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.os.Handler
@@ -64,6 +65,7 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
     val selectedPlaylist = MutableStateFlow<Long?>(null)
     val online = MutableStateFlow<List<SongEntity>>(emptyList())
     val searching = MutableStateFlow(false)
+    val spotifyConnected = MutableStateFlow(app.spotify.isConnected())
     val error = MutableStateFlow<String?>(null)
     val ready = MutableStateFlow(false)
     val currentId = MutableStateFlow<String?>(null)
@@ -162,10 +164,7 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
             delay(300) // Debounce rapid typing to avoid unnecessary network requests.
             try {
                 dao.addSearch(SearchHistoryEntity(query.trim()))
-                val archiveResults = runCatching { app.archive.search(query.trim()) }.getOrDefault(emptyList())
-                val audiusResults = runCatching { app.audius.search(query.trim()) }.getOrDefault(emptyList())
-                val additionalResults = app.additionalMusic.searchAll(query.trim())
-                online.value = (audiusResults + archiveResults + additionalResults).distinctBy { it.id }
+                online.value = app.youtube.search(query.trim())
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
@@ -175,6 +174,45 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
                 if (currentCoroutineContext().isActive) searching.value = false
             }
         }
+    }
+
+    fun connectSpotify() {
+        try {
+            val auth = app.spotify.authorizationUri()
+            app.startActivity(Intent(Intent.ACTION_VIEW, auth).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (failure: Exception) {
+            message(failure.localizedMessage ?: "Spotify Client ID belum dikonfigurasi.")
+        }
+    }
+
+    fun handleSpotifyCallback(uri: Uri) = viewModelScope.launch {
+        if (uri.scheme != "novamusic" || uri.host != "spotify-callback") return@launch
+        searching.value = true
+        try {
+            app.spotify.completeAuthorization(uri)
+            spotifyConnected.value = app.spotify.isConnected()
+            message("Spotify berhasil terhubung. Playlist siap diimpor.")
+        } catch (failure: Exception) {
+            message("Login Spotify gagal: ${failure.localizedMessage ?: "Silakan coba lagi."}")
+        } finally { searching.value = false }
+    }
+
+    fun disconnectSpotify() {
+        app.spotify.logout()
+        spotifyConnected.value = false
+        message("Akun Spotify diputus.")
+    }
+
+    fun importSpotifyPlaylist(url: String) = viewModelScope.launch {
+        searching.value = true
+        try {
+            val token = app.spotify.validAccessToken()
+            val imported = app.spotify.getPlaylistItems(url, token)
+            online.value = imported
+            message("Playlist Spotify dimuat: ${imported.size} track metadata")
+        } catch (failure: Exception) {
+            message("Impor Spotify gagal: ${failure.localizedMessage ?: "Periksa koneksi dan akses playlist."}")
+        } finally { searching.value = false }
     }
 
     fun clearSearchHistory() = viewModelScope.launch { dao.clearSearches() }
@@ -385,8 +423,8 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun download(song: SongEntity) = viewModelScope.launch {
-        if (!song.downloadable || !song.uri.startsWith("https://archive.org/download/")) {
-            message("Unduhan tidak diizinkan atau lisensi belum terverifikasi"); return@launch
+        if (!song.downloadable) {
+            message("Sumber ini tidak menyediakan unduhan yang diizinkan"); return@launch
         }
         runCatching {
             val manager = app.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
