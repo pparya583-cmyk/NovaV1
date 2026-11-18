@@ -15,8 +15,8 @@ android {
         applicationId = "id.novamusic.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 15
-        versionName = "1.0.5"
+        versionCode = 20
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
